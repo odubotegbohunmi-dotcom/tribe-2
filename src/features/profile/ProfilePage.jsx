@@ -51,7 +51,7 @@ export default function ProfilePage() {
 
   async function saveProfile() {
     setError("")
-    const { data, error: updateError } = await supabase.from("profiles").update({ display_name: displayName, username, bio }).eq("id", user.id).select()
+    const { data, error: updateError } = await supabase.from("profiles").update({ display_name: displayName, username: username.trim().toLowerCase(), bio }).eq("id", user.id).select()
     if (updateError) { setError(updateError.message); return }
     setProfile(data?.[0] || profile)
     setEditing(false)

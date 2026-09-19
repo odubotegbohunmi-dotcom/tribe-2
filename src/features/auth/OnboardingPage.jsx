@@ -34,7 +34,7 @@ export default function OnboardingPage() {
     if (!form.username.trim()) { setError("Username is required."); return }
     if (!form.displayName.trim()) { setError("Display name is required."); return }
     setSubmitting(true)
-    const { error: createError } = await supabase.from("profiles").insert({ id: user.id, username: form.username.trim(), display_name: form.displayName.trim(), bio: form.bio.trim(), avatar_url: null })
+    const { error: createError } = await supabase.from("profiles").insert({ id: user.id, username: form.username.trim().toLowerCase(), display_name: form.displayName.trim(), bio: form.bio.trim(), avatar_url: null })
     if (createError) { setError(createError.message); setSubmitting(false); return }
     navigate("/", { replace: true })
   }

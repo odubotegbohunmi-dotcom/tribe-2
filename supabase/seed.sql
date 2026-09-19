@@ -1,0 +1,6 @@
+-- Tribe development seed file.
+-- Intentionally empty: profiles are tied to auth.users, so this repository never
+-- inserts fake authentication users or production-like profile records.
+--
+-- After creating test users through Supabase Auth, create their profiles through
+-- the application's onboarding flow or with user-scoped authenticated requests.

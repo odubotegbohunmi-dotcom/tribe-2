@@ -19,7 +19,7 @@ export default function SignUpPage() {
     if (!form.displayName.trim()) { setError("Display name is required."); return }
     if (form.password !== form.confirmPassword) { setError("Passwords do not match."); return }
     setSubmitting(true)
-    const { data, error: signUpError } = await signUp({ email: form.email.trim(), password: form.password, username: form.username.trim(), displayName: form.displayName.trim() })
+    const { data, error: signUpError } = await signUp({ email: form.email.trim(), password: form.password, username: form.username.trim().toLowerCase(), displayName: form.displayName.trim() })
     if (signUpError) setError(signUpError.message)
     else if (data.session) navigate("/onboarding", { replace: true })
     else setMessage("Check your email to confirm your account, then sign in to finish setting up your profile.")
