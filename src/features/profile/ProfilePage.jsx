@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Avatar from "../../components/ui/Avatar"
 import Button from "../../components/ui/Button"
 import EmptyState from "../../components/ui/EmptyState"
 import ErrorState from "../../components/ui/ErrorState"
 import Modal from "../../components/ui/Modal"
 import Skeleton from "../../components/ui/Skeleton"
+import useAuth from "../../hooks/useAuth"
 import { supabase } from "../../lib/supabase"
 
 export default function ProfilePage() {
+  const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -18,10 +20,10 @@ export default function ProfilePage() {
   const [followerCount, setFollowerCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
 
-  async function loadProfile() {
+  const loadProfile = useCallback(async () => {
     setLoading(true)
     setError("")
-    const { data, error: profileError } = await supabase.from("profiles").select("*").limit(1)
+    const { data, error: profileError } = await supabase.from("profiles").select("*").eq("id", user.id)
     if (profileError) { setError(profileError.message); setLoading(false); return }
     const selectedProfile = data?.[0] || null
     setProfile(selectedProfile)
@@ -34,11 +36,11 @@ export default function ProfilePage() {
       setFollowingCount(following || 0)
     }
     setLoading(false)
-  }
+  }, [user])
 
   useEffect(() => {
     void Promise.resolve().then(loadProfile)
-  }, [])
+  }, [loadProfile])
 
   function startEditing() {
     setDisplayName(profile.display_name || "")
@@ -49,9 +51,9 @@ export default function ProfilePage() {
 
   async function saveProfile() {
     setError("")
-    const { data, error: updateError } = await supabase.from("profiles").update({ display_name: displayName, username, bio }).eq("id", profile.id).select().single()
+    const { data, error: updateError } = await supabase.from("profiles").update({ display_name: displayName, username, bio }).eq("id", user.id).select()
     if (updateError) { setError(updateError.message); return }
-    setProfile(data)
+    setProfile(data?.[0] || profile)
     setEditing(false)
   }
 
@@ -60,12 +62,12 @@ export default function ProfilePage() {
     if (!file || !profile) return
     setError("")
     const fileExt = file.name.split(".").pop()
-    const fileName = `${profile.id}.${fileExt}`
+    const fileName = `avatars/${user.id}/avatar.${fileExt}`
     const { error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, { upsert: true })
     if (uploadError) { setError(uploadError.message); return }
     const { data } = supabase.storage.from("avatars").getPublicUrl(fileName)
     const avatarUrl = data.publicUrl
-    const { error: updateError } = await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", profile.id)
+    const { error: updateError } = await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", user.id)
     if (updateError) { setError(updateError.message); return }
     setProfile({ ...profile, avatar_url: avatarUrl })
   }

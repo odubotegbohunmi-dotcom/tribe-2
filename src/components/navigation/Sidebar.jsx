@@ -11,7 +11,7 @@ const navigationItems = [
   ["/profile", "●", "Profile"],
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ profile, onSignOut }) {
   return (
     <aside className="sidebar">
       <div className="logo">TRIBE</div>
@@ -23,6 +23,11 @@ export default function Sidebar() {
         ))}
       </nav>
       <Button className="create-button">+ Create</Button>
+      <div className="user-card">
+        <span className="user-card__avatar">{profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : profile?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+        <div><strong>{profile?.display_name || "Tribe member"}</strong><small>@{profile?.username || "member"}</small></div>
+      </div>
+      <Button className="sign-out" variant="surface" onClick={onSignOut}>Sign out</Button>
     </aside>
   )
 }

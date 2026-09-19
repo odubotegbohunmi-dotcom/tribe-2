@@ -2,23 +2,24 @@ import { useState } from "react"
 import Avatar from "../../components/ui/Avatar"
 import Button from "../../components/ui/Button"
 import ErrorState from "../../components/ui/ErrorState"
+import useAuth from "../../hooks/useAuth"
 import { supabase } from "../../lib/supabase"
 
 const trends = [["#Football", "18.4K posts"], ["#Gaming", "14.7K posts"], ["#Afrobeats", "9.8K posts"]]
 const tribes = [["🎮", "Gamers United", "42.8K members"], ["🎵", "Music Central", "31.2K members"], ["⚽", "Football Talk", "27.5K members"]]
 
 export default function ExplorePage() {
+  const { user } = useAuth()
   const [followingJordan, setFollowingJordan] = useState(false)
   const [followError, setFollowError] = useState("")
 
   async function followJordan() {
     if (followingJordan) return
     setFollowError("")
-    const { data: me, error: meError } = await supabase.from("profiles").select("id").limit(1).single()
-    if (meError) { setFollowError(meError.message); return }
-    const { data: jordan, error: jordanError } = await supabase.from("profiles").select("id").eq("username", "jordanmusic").single()
-    if (jordanError) { setFollowError(jordanError.message); return }
-    const { error } = await supabase.from("follows").insert({ follower_id: me.id, following_id: jordan.id })
+    const { data: jordanProfiles, error: jordanError } = await supabase.from("profiles").select("id").eq("username", "jordanmusic")
+    const jordan = jordanProfiles?.[0]
+    if (jordanError || !jordan) { setFollowError(jordanError?.message || "Jordan's profile could not be found."); return }
+    const { error } = await supabase.from("follows").insert({ follower_id: user.id, following_id: jordan.id })
     if (error) { setFollowError(error.message); return }
     setFollowingJordan(true)
   }

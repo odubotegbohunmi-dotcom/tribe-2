@@ -8,7 +8,7 @@ const navigationItems = [
   ["/profile", "●", "Profile"],
 ]
 
-export default function MobileNav() {
+export default function MobileNav({ onSignOut }) {
   return (
     <nav className="mobile-nav" aria-label="Mobile navigation">
       {navigationItems.map(([to, icon, label]) => (
@@ -16,6 +16,7 @@ export default function MobileNav() {
           <span>{icon}</span><small>{label}</small>
         </NavLink>
       ))}
+      <button type="button" className="mobile-nav__item" onClick={onSignOut}><span>↪</span><small>Sign out</small></button>
     </nav>
   )
 }

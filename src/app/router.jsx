@@ -7,9 +7,17 @@ import ProfilePage from "../features/profile/ProfilePage"
 import LivePage from "../features/live/LivePage"
 import MessagesPage from "../features/messages/MessagesPage"
 import NotificationsPage from "../features/notifications/NotificationsPage"
+import RequireAuth from "../features/auth/RequireAuth"
+import SignInPage from "../features/auth/SignInPage"
+import SignUpPage from "../features/auth/SignUpPage"
+import OnboardingPage from "../features/auth/OnboardingPage"
 
 export default function AppRouter() {
-  return <BrowserRouter><Routes><Route element={<AppShell />}>
+  return <BrowserRouter><Routes>
+    <Route path="/login" element={<SignInPage />} />
+    <Route path="/signup" element={<SignUpPage />} />
+    <Route element={<RequireAuth allowMissingProfile />}><Route path="/onboarding" element={<OnboardingPage />} /></Route>
+    <Route element={<RequireAuth />}><Route element={<AppShell />}>
     <Route path="/" element={<HomePage />} />
     <Route path="/explore" element={<ExplorePage />} />
     <Route path="/tribes" element={<TribesPage />} />
@@ -17,5 +25,6 @@ export default function AppRouter() {
     <Route path="/messages" element={<MessagesPage />} />
     <Route path="/notifications" element={<NotificationsPage />} />
     <Route path="/profile" element={<ProfilePage />} />
-  </Route></Routes></BrowserRouter>
+    </Route></Route>
+  </Routes></BrowserRouter>
 }
