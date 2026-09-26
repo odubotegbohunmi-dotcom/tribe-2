@@ -1,6 +1,21 @@
-export default function IconButton({ children, label, className = "", type = "button", ...props }) {
+export default function IconButton({
+  children,
+  label,
+  className = "",
+  onClick,
+  disabled = false,
+  type = "button",
+  title,
+}) {
   return (
-    <button type={type} className={`icon-button ${className}`.trim()} aria-label={label} {...props}>
+    <button
+      type={type}
+      className={`icon-button ${className}`}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={title || label}
+    >
       {children}
     </button>
   )

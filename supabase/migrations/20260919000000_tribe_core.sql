@@ -383,3 +383,13 @@ drop policy if exists avatars_update_own_folder on storage.objects;
 create policy avatars_update_own_folder on storage.objects for update to authenticated using (bucket_id = 'avatars' and name like ('avatars/' || auth.uid()::text || '/%')) with check (bucket_id = 'avatars' and name like ('avatars/' || auth.uid()::text || '/%'));
 drop policy if exists avatars_delete_own_folder on storage.objects;
 create policy avatars_delete_own_folder on storage.objects for delete to authenticated using (bucket_id = 'avatars' and name like ('avatars/' || auth.uid()::text || '/%'));
+
+grant select, insert, update, delete on table public.posts to authenticated;
+
+grant select on table public.profiles to authenticated;
+
+grant select, insert, delete on table public.likes to authenticated;
+
+grant select, insert, delete on table public.reposts to authenticated;
+
+grant select, insert, delete on table public.comments to authenticated;
