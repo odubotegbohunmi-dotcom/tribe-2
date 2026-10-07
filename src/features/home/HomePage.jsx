@@ -2,11 +2,8 @@ import { useEffect, useRef, useState } from "react"
 import useAuth from "../../hooks/useAuth"
 import { supabase } from "../../lib/supabase"
 
-// NOTE: image uploads go to a Supabase Storage bucket called "posts".
-// Create a public bucket named "posts" in your Supabase dashboard
-// (Storage → New bucket → name it "posts", toggle Public on) or
-// rename BUCKET_NAME below to match a bucket you already have.
-const BUCKET_NAME = "posts"
+// Upload images privately for server-side moderation and publishing.
+const PENDING_BUCKET_NAME = "posts-pending"
 const MAX_IMAGES = 4
 
 function formatTime(dateString) {
@@ -204,23 +201,23 @@ export default function HomePage() {
     const uploaded = []
 
     for (const file of mediaFiles) {
-      const path = `${user.id}/${Date.now()}-${file.name}`
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
+      const path = `${user.id}/${Date.now()}-${crypto.randomUUID()}-${safeName}`
 
       const { error: uploadError } = await supabase.storage
-        .from(BUCKET_NAME)
+        .from(PENDING_BUCKET_NAME)
         .upload(path, file)
 
       if (uploadError) {
+        if (uploaded.length) {
+          await supabase.storage.from(PENDING_BUCKET_NAME).remove(uploaded)
+        }
         throw new Error(
           `Image upload failed: ${uploadError.message}`
         )
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from(BUCKET_NAME)
-        .getPublicUrl(path)
-
-      uploaded.push({ url: publicUrlData.publicUrl })
+      uploaded.push(path)
     }
 
     return uploaded
@@ -235,18 +232,21 @@ export default function HomePage() {
     setError("")
 
     try {
-      const media = await uploadMedia()
+      const pendingMediaPaths = await uploadMedia()
+      const { data, error: publishError } = await supabase.functions.invoke("publish-content", {
+        body: { contentType: "post", body, pendingMediaPaths },
+      })
 
-      const { error: insertError } = await supabase
-        .from("posts")
-        .insert({
-          author_id: user.id,
-          body,
-          media,
-          visibility: "public",
-        })
-
-      if (insertError) throw insertError
+      if (publishError || data?.error) {
+        if (pendingMediaPaths.length) {
+          const { error: cleanupError } = await supabase.storage
+            .from(PENDING_BUCKET_NAME)
+            .remove(pendingMediaPaths)
+          if (cleanupError) console.warn("Could not clean up pending post images:", cleanupError.message)
+        }
+        throw new Error(data?.error || publishError?.message || "Tribe Police is temporarily unavailable. Please try again.")
+      }
+      if (!data?.post) throw new Error("The approved post could not be saved. Please retry.")
 
       setPosting(false)
       closeComposer()

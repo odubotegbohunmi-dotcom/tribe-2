@@ -159,8 +159,6 @@ export async function createPost({
   mediaUrl,
   tribeId,
 }) {
-  const user = await getAuthenticatedUser()
-
   const trimmedBody = body.trim()
   const trimmedMediaUrl = mediaUrl.trim()
 
@@ -170,25 +168,20 @@ export async function createPost({
     )
   }
 
-  const { data, error } = await supabase
-    .from("posts")
-    .insert({
-      author_id: user.id,
-      tribe_id: tribeId || null,
+  const { data, error } = await supabase.functions.invoke("publish-content", {
+    body: {
+      contentType: "post",
       body: trimmedBody,
-      media: trimmedMediaUrl
-        ? [{ url: trimmedMediaUrl }]
-        : [],
-      visibility: "public",
-    })
-    .select(postFields)
-    .single()
+      mediaUrl: trimmedMediaUrl || null,
+      tribeId: tribeId || null,
+    },
+  })
 
-  if (error) {
-    throw new Error(error.message)
+  if (error || data?.error) {
+    throw new Error(data?.error || error?.message || "Tribe Police is temporarily unavailable. Please try again.")
   }
-
-  return data
+  if (!data?.post) throw new Error("The approved post could not be saved. Please retry.")
+  return data.post
 }
 
 /*
@@ -315,35 +308,27 @@ export async function createComment({
   postId,
   body,
 }) {
-  const user = await getAuthenticatedUser()
-
   const trimmedBody = body.trim()
 
   if (!trimmedBody) {
     throw new Error("Write a comment before sending.")
   }
 
-  const { data, error } = await supabase
-    .from("comments")
-    .insert({
-      post_id: postId,
-      author_id: user.id,
-      body: trimmedBody,
-    })
-    .select(
-      "id, post_id, author_id, body, created_at, profiles!comments_author_id_fkey(id, username, display_name, avatar_url)"
-    )
-    .single()
+  const { data, error } = await supabase.functions.invoke("publish-content", {
+    body: { contentType: "comment", postId, body: trimmedBody },
+  })
 
-  if (error) {
-    throw new Error(error.message)
+  if (error || data?.error) {
+    throw new Error(data?.error || error?.message || "Tribe Police is temporarily unavailable. Please try again.")
   }
+  if (!data?.comment) throw new Error("The approved comment could not be saved. Please retry.")
+  const comment = data.comment
 
   return {
-    ...data,
-    author: Array.isArray(data.profiles)
-      ? data.profiles[0]
-      : data.profiles,
+    ...comment,
+    author: Array.isArray(comment.profiles)
+      ? comment.profiles[0]
+      : comment.profiles,
   }
 }
 
