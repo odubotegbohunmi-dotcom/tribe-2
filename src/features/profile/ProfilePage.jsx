@@ -12,8 +12,9 @@ import useAuth from "../../hooks/useAuth"
 import { supabase } from "../../lib/supabase"
 
 import FeedPage from "../posts/FeedPage"
+import { loadProfileProgress } from "./profileProgress"
 
-const TABS = ["Posts", "Replies", "Media", "Tribes"]
+const TABS = ["Posts", "Replies", "Media", "Tribes", "Achievements"]
 
 const MAX_DISPLAY_NAME = 40
 const MAX_USERNAME = 20
@@ -51,6 +52,19 @@ export default function ProfilePage() {
   const [followingCount, setFollowingCount] = useState(0)
 
   const [activeTab, setActiveTab] = useState("Posts")
+  const [progress, setProgress] = useState(null)
+  const [progressError, setProgressError] = useState("")
+
+  useEffect(() => {
+    if (!user?.id) return
+    let active = true
+    loadProfileProgress(user.id).then((result) => {
+      if (active) setProgress(result)
+    }).catch((loadError) => {
+      if (active) setProgressError(loadError.message || "Progress is unavailable.")
+    })
+    return () => { active = false }
+  }, [user?.id])
 
   // --------------------------------------------------
   // LOAD PROFILE
@@ -844,12 +858,19 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <strong>0</strong>
+              <strong>{progress ? progress.tribes : "—"}</strong>
               <span>Tribes</span>
             </div>
 
           </div>
         </div>
+
+        <section className="v1-profile-progress" aria-label="XP and progress">
+          <div className="v1-progress-heading"><div><strong>{progress ? `Level ${progress.level}` : "Progress unavailable"}</strong><span>{progress ? `${progress.xp.toLocaleString()} XP` : progressError || "Loading verified activity…"}</span></div>{progress && <span>{progress.currentLevelXp} / {progress.nextLevelXp} XP to next level</span>}</div>
+          <div className="v1-progress-track"><span style={{ width: progress ? `${Math.min(100, (progress.currentLevelXp / progress.nextLevelXp) * 100)}%` : "0%" }} /></div>
+          <div className="v1-progress-stats">{progress ? <><div><strong>{progress.posts}</strong><span>Posts</span></div><div><strong>{progress.tribes}</strong><span>Tribes</span></div><div><strong>{progress.likes}</strong><span>Likes given</span></div></> : <p>Activity totals will appear when they can be verified.</p>}</div>
+          {progress && <small className="v1-progress-method">Calculated from recorded activity: 70 XP per post, 15 per joined Tribe, and 2 per like. Tribe Wars wins are unavailable.</small>}
+        </section>
 
         {/* ================= TABS ================= */}
 
@@ -911,6 +932,14 @@ export default function ProfilePage() {
               profile.display_name || "this user"
             } joins will show up here.`}
           />
+        )}
+
+        {activeTab === "Achievements" && (
+          <section className="v1-achievements" aria-label="Achievements">
+            <h2>Achievements</h2>
+            {progress ? <div className="v1-achievement-grid">{progress.achievements.map((achievement) => <article className={achievement.earned ? "earned" : "locked"} key={achievement.name}><span aria-hidden="true">{achievement.earned ? "✦" : "◇"}</span><div><strong>{achievement.name}</strong><small>{achievement.earned ? "Earned from recorded activity" : achievement.detail}</small></div><b>{achievement.earned ? "Earned" : "Locked"}</b></article>)}</div> : <EmptyState title="Achievements unavailable" description={progressError || "Verified activity is still loading."} />}
+            <p className="v1-progress-method">No Tribe Wars wins or unavailable activities are counted as achievements.</p>
+          </section>
         )}
 
       </div>

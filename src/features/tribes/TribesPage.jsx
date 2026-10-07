@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 import Button from "../../components/ui/Button"
 import ErrorState from "../../components/ui/ErrorState"
 import useAuth from "../../hooks/useAuth"
 import { supabase } from "../../lib/supabase"
+import TribeCreateWizard from "./TribeCreateWizard"
 
 function createSlug(name) {
   return name
@@ -18,18 +20,23 @@ function createSlug(name) {
 export default function TribesPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [tribes, setTribes] = useState([])
+  const [tribeSettings, setTribeSettings] = useState({})
   const [joinedTribes, setJoinedTribes] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   const [showCreate, setShowCreate] = useState(false)
-  const [tribeName, setTribeName] = useState("")
-  const [tribeDescription, setTribeDescription] = useState("")
   const [creating, setCreating] = useState(false)
   const [joiningId, setJoiningId] = useState(null)
   const [activeTab, setActiveTab] = useState("Discover")
+
+  useEffect(() => {
+    if (searchParams.get("view") === "joined") setActiveTab("Joined")
+    if (searchParams.get("create") === "1") setShowCreate(true)
+  }, [searchParams])
 
   async function loadTribes() {
     if (!user?.id) return
@@ -71,6 +78,13 @@ export default function TribesPage() {
       joinedMap[membership.tribe_id] = true
     }
 
+    const tribeIds = (tribesResult.data || []).map((tribe) => tribe.id)
+    if (tribeIds.length) {
+      const settingsResult = await supabase.from("tribe_settings").select("tribe_id, accent_color, tags").in("tribe_id", tribeIds)
+      setTribeSettings(settingsResult.error ? {} : Object.fromEntries((settingsResult.data || []).map((settings) => [settings.tribe_id, settings])))
+    } else {
+      setTribeSettings({})
+    }
     setTribes(tribesResult.data || [])
     setJoinedTribes(joinedMap)
     setLoading(false)
@@ -108,11 +122,9 @@ export default function TribesPage() {
     setJoiningId(null)
   }
 
-  async function handleCreateTribe(event) {
-    event.preventDefault()
-
-    const name = tribeName.trim()
-    const description = tribeDescription.trim()
+  async function handleCreateTribe(values) {
+    const name = values.name.trim()
+    const description = values.description.trim()
     const slug = createSlug(name)
 
     if (!name) {
@@ -151,8 +163,18 @@ export default function TribesPage() {
       return
     }
 
-    setTribeName("")
-    setTribeDescription("")
+    const { error: settingsError } = await supabase.from("tribe_settings").insert({
+      tribe_id: data.id,
+      accent_color: values.color,
+      tags: values.tags,
+      announcement: values.announcement.trim() || null,
+    })
+
+    if (settingsError) {
+      console.error("Tribe created but settings could not be saved:", settingsError)
+      window.alert(`Tribe created, but its extra settings could not be saved: ${settingsError.message}`)
+    }
+
     setShowCreate(false)
     setCreating(false)
 
@@ -165,8 +187,7 @@ export default function TribesPage() {
 
   function openCreateModal() {
     setError("")
-    setTribeName("")
-    setTribeDescription("")
+    setSearchParams((params) => { params.delete("create"); return params })
     setShowCreate(true)
   }
 
@@ -175,6 +196,7 @@ export default function TribesPage() {
 
     setShowCreate(false)
     setError("")
+    setSearchParams((params) => { params.delete("create"); return params })
   }
 
   function handleCardKeyDown(event, tribeId) {
@@ -337,7 +359,8 @@ export default function TribesPage() {
 
               return (
                 <article
-                  className="big-tribe-card"
+                  className="big-tribe-card v1-tribe-card"
+                  style={{ "--tribe-accent": tribeSettings[tribe.id]?.accent_color || "#8062ff" }}
                   key={tribe.id}
                   role="button"
                   tabIndex={0}
@@ -367,6 +390,7 @@ export default function TribesPage() {
                       {tribe.description ||
                         "A Tribe community."}
                     </p>
+                    {!!tribeSettings[tribe.id]?.tags?.length && <div className="v1-tribe-tags">{tribeSettings[tribe.id].tags.slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</div>}
                   </div>
 
                   <div className="big-tribe-card-footer">
@@ -398,107 +422,7 @@ export default function TribesPage() {
         )}
       </div>
 
-      {/* CREATE MODAL */}
-      {showCreate && (
-        <div
-          className="modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              closeCreateModal()
-            }
-          }}
-        >
-          <div
-            className="modal tribe-create-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-tribe-title"
-          >
-            <div className="modal__header">
-              <div>
-                <span className="modal-eyebrow">
-                  NEW COMMUNITY
-                </span>
-
-                <h2 id="create-tribe-title">
-                  Create a Tribe
-                </h2>
-
-                <p>
-                  Build a community around something you love.
-                </p>
-              </div>
-
-              <Button
-                className="modal-close"
-                variant="ghost"
-                disabled={creating}
-                onClick={closeCreateModal}
-                aria-label="Close"
-              >
-                ✕
-              </Button>
-            </div>
-
-            <form onSubmit={handleCreateTribe}>
-              <label>
-                Tribe name
-
-                <input
-                  value={tribeName}
-                  onChange={(event) =>
-                    setTribeName(event.target.value)
-                  }
-                  maxLength={80}
-                  placeholder="e.g. Gaming Central"
-                  required
-                  autoFocus
-                />
-              </label>
-
-              <label>
-                Description
-
-                <textarea
-                  value={tribeDescription}
-                  onChange={(event) =>
-                    setTribeDescription(event.target.value)
-                  }
-                  maxLength={1000}
-                  placeholder="What is this Tribe about?"
-                  rows={4}
-                />
-              </label>
-
-              {error && (
-                <div className="tribe-form-error">
-                  {error}
-                </div>
-              )}
-
-              <div className="modal__actions">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={creating}
-                  onClick={closeCreateModal}
-                >
-                  Cancel
-                </Button>
-
-                <Button
-                  type="submit"
-                  disabled={creating}
-                >
-                  {creating
-                    ? "Creating..."
-                    : "Create Tribe"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {showCreate && <TribeCreateWizard onClose={closeCreateModal} onCreate={handleCreateTribe} creating={creating} error={error} />}
     </>
   )
 }

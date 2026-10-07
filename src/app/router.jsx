@@ -10,6 +10,7 @@ import ProfilePage from "../features/profile/ProfilePage"
 import LiveRoomPage from "../features/live/LiveRoomPage"
 import MessagesPage from "../features/messages/MessagesPage"
 import NotificationsPage from "../features/notifications/NotificationsPage"
+import ComingSoonPage from "../features/navigation/ComingSoonPage"
 
 import RequireAuth from "../features/auth/RequireAuth"
 import SignInPage from "../features/auth/SignInPage"
@@ -65,6 +66,13 @@ export default function AppRouter() {
               path="/tribes/:tribeId"
               element={<TribePage />}
             />
+
+            <Route path="/tribe-wars" element={<ComingSoonPage title="Tribe Wars" icon="⚔" />} />
+            <Route path="/tribe-plus" element={<ComingSoonPage title="Tribe Plus" icon="★" />} />
+            <Route path="/safety" element={<ComingSoonPage title="Safety Center" icon="◇" />} />
+            <Route path="/devices" element={<ComingSoonPage title="Devices" icon="▣" />} />
+            <Route path="/transparency" element={<ComingSoonPage title="Transparency" icon="▤" />} />
+            <Route path="/live" element={<ComingSoonPage title="Live" icon="◉" message="Live rooms open through their existing stream links. Tribe-specific voice is not available yet." />} />
 
             {/* Discover */}
            

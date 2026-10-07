@@ -7,6 +7,9 @@ import ErrorState from "../../components/ui/ErrorState"
 import useAuth from "../../hooks/useAuth"
 import PostComposer from "../posts/PostComposer"
 import { supabase } from "../../lib/supabase"
+import { TribeAITab, TribeEventsTab, TribeQATab, TribeVoiceTab, TribeWikiTab } from "./TribeModules"
+
+const TRIBE_SECTIONS = ["Feed", "Wiki", "Q&A", "Voice", "Events", "AI"]
 
 export default function TribePage() {
   const { tribeId } = useParams()
@@ -23,6 +26,8 @@ export default function TribePage() {
   const [joining, setJoining] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState("")
+  const [activeSection, setActiveSection] = useState("Feed")
+  const [tribeSettings, setTribeSettings] = useState(null)
 
   useEffect(() => {
     if (!tribeId || !user?.id) return
@@ -49,6 +54,13 @@ export default function TribePage() {
       }
 
       setTribe(tribeData)
+
+      const { data: settingsData } = await supabase
+        .from("tribe_settings")
+        .select("accent_color, tags, announcement")
+        .eq("tribe_id", tribeData.id)
+        .maybeSingle()
+      setTribeSettings(settingsData || null)
 
       try {
         const tribePosts = await fetchPosts({
@@ -242,7 +254,7 @@ export default function TribePage() {
         </Link>
       </div>
 
-      <section className="tribe-header">
+      <section className="tribe-header" style={tribeSettings?.accent_color ? { "--tribe-accent": tribeSettings.accent_color } : undefined}>
         <div className="tribe-header__icon">
           🏴
         </div>
@@ -312,7 +324,12 @@ export default function TribePage() {
         </div>
       </section>
 
-      <section className="tribe-about">
+      {tribeSettings?.announcement && <aside className="v1-tribe-announcement"><strong>ANNOUNCEMENT</strong><p>{tribeSettings.announcement}</p></aside>}
+      <nav className="v1-tribe-section-nav" aria-label="Tribe sections" role="tablist">
+        {TRIBE_SECTIONS.map((section) => <button type="button" key={section} role="tab" aria-selected={activeSection === section} className={activeSection === section ? "active" : ""} onClick={() => setActiveSection(section)}>{section}</button>)}
+      </nav>
+
+      {activeSection === "Feed" && <><section className="tribe-about">
         <h2>About this Tribe</h2>
 
         <p>
@@ -382,6 +399,12 @@ export default function TribePage() {
           </div>
         )}
       </section>
+      </>}
+      {activeSection === "Wiki" && <TribeWikiTab tribeId={tribe.id} canContribute={joined || isOwner} />}
+      {activeSection === "Q&A" && <TribeQATab tribeId={tribe.id} canContribute={joined || isOwner} />}
+      {activeSection === "Events" && <TribeEventsTab tribeId={tribe.id} canContribute={joined || isOwner} canManage={isOwner} />}
+      {activeSection === "Voice" && <TribeVoiceTab />}
+      {activeSection === "AI" && <TribeAITab />}
     </div>
   )
 }
